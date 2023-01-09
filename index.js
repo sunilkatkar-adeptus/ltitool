@@ -1,8 +1,8 @@
 require('dotenv').config()
 const path = require('path')
-const routes = require('./routes')
+const routes = require('./src/routes')
 
-const lti = require('./ltijs').Provider
+const lti = require('./src/ltijs').Provider
 
 
 let consumerAccessTokenURL = "https://api.coursera.org/api/lti/auth/accessToken/1220~ltitoolonrendercom";
