@@ -30,9 +30,9 @@ const setup = async () => {
   let platform = await lti.registerPlatform({
     url: "https://www.coursera.org/",
     name: "Coursera",
-    clientId: "BFPm4n5vRdKT5uJ-b_XSeA",
+    clientId: "DR-n_kniQZafp_5J4mGWFA",
     authenticationEndpoint: "https://api.coursera.org/api/lti/auth/token",
-    accesstokenEndpoint: 'https://api.coursera.org/api/lti/auth/accessToken/1220~ltitoolvercelapp',
+    accesstokenEndpoint: 'https://api.coursera.org/api/lti/auth/accessToken/1220~ltitoolonrendercom',
     authConfig: { method: 'JWK_SET', key: 'https://api.coursera.org/api/lti/keyset' }
   })
   console.log('the platform after the set is', platform);
