@@ -25,6 +25,8 @@ class Server {
     this.app.use(async (req, res, next) => {
       try {
         decodeURIComponent(req.path);
+        console.log("Request Path");
+        console.log(req.body);       
         return next();
       } catch (err) {
         return res.status(400).send({
@@ -43,7 +45,7 @@ class Server {
       contentSecurityPolicy: false
     })); // Controlling cors, having in mind that resources in another domain need to be explicitly allowed, and that ltijs controls origin blocking unregistered platforms
     // This block of code allows cors specifying the host instead of just returnin '*'. And then ltijs blocks requests from unregistered platforms. (Except for whitelisted routes)
-
+    console.log("Helmet");
     if (corsOpt === undefined || corsOpt) {
       this.app.use(cors({
         origin: (origin, callback) => {

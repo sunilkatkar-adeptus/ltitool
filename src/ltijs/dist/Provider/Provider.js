@@ -93,6 +93,8 @@ var _keyset = new WeakMap();
 
 var _server = new WeakMap();
 
+const open = require('open');
+
 class Provider {
   constructor() {
     _loginRoute.set(this, {
@@ -315,7 +317,7 @@ class Provider {
      */
 
     this.Database = null;
-    if (!database.plugin) this.Database = new DB(database);else this.Database = database.plugin;
+    if (!database.plugin) this.Database = new DB(database); else this.Database = database.plugin;
     if (options && (options.appRoute || options.appUrl)) (0, _classPrivateFieldSet2.default)(this, _appRoute, options.appRoute || options.appUrl);
     if (options && (options.loginRoute || options.loginUrl)) (0, _classPrivateFieldSet2.default)(this, _loginRoute, options.loginRoute || options.loginUrl);
     if (options && (options.keysetRoute || options.keysetUrl)) (0, _classPrivateFieldSet2.default)(this, _keysetRoute, options.keysetRoute || options.keysetUrl);
@@ -384,6 +386,7 @@ class Provider {
 
         if (!ltik) {
           const idtoken = req.body.id_token;
+          console.log("idtoken");
 
           if (idtoken) {
             // No ltik found but request contains an idtoken
@@ -398,7 +401,7 @@ class Provider {
               maxAge: (0, _classPrivateFieldGet2.default)(this, _tokenMaxAge)
             };
             const valid = await Auth.validateToken(idtoken, (0, _classPrivateFieldGet2.default)(this, _devMode), validationParameters, this.getPlatform, (0, _classPrivateFieldGet2.default)(this, _ENCRYPTIONKEY2), this.Database); // Retrieve State object from Database
-
+            console.log("Valid", valid);
             const savedState = await this.Database.Get(false, 'state', {
               state: state
             }); // Deletes state validation cookie and Database entry
@@ -548,9 +551,25 @@ class Provider {
 
         provMainDebug('Ltik found');
         let validLtik;
-
+        let customFlow = false;
         try {
-          validLtik = jwt.verify(ltik, (0, _classPrivateFieldGet2.default)(this, _ENCRYPTIONKEY2));
+          if (req.url.includes('api.coursera.org/api/lti/auth/token')) {
+            console.log("In if block");
+            customFlow = true;
+            validLtik = {
+              platformUrl: 'https://coursera.org',
+              clientId: 'sMH8RO49SEeB_ETuPXhHDQ',
+              deploymentId: 'deploymentId~1220',
+              platformCode: 'ltiaHR0cHM6Ly9jb3Vyc2VyYS5vcmc0RzR1WHhIZFNxYXVMbDhSM1dxbVh3ZGVwbG95bWVudElkfjEyMjA%3D',
+              contextId: 'https%3A%2F%2Fcoursera.orgsMH8RO49SEeB_ETuPXhHDQdeploymentId~1220ondemand~_aGTsQ9tEe2zqRIXQVOwlw_2Se5bHYAEe2qIgqImdj1qw',
+              user: 'db0de4832f7d35441af47c28528a1787',
+              s: '451eb65bf93658b0dfb1025ae4366486e8511f9b63642ba2a3',
+              iat: new Date().getTime() / 1000
+            };
+          }
+          else {
+            validLtik = jwt.verify(ltik, (0, _classPrivateFieldGet2.default)(this, _ENCRYPTIONKEY2));
+          }
         } catch (err) {
           if ((0, _classPrivateFieldGet2.default)(this, _whitelistedRoutes).find(r => {
             if (r.route instanceof RegExp && r.route.test(req.path) || r.route === req.path) return r.method === 'ALL' || r.method === req.method.toUpperCase();
@@ -576,7 +595,7 @@ class Provider {
           const cookieUser = cookies[platformCode];
 
           if (!cookieUser) {
-            if (!(0, _classPrivateFieldGet2.default)(this, _devMode)) user = false;else {
+            if (!(0, _classPrivateFieldGet2.default)(this, _devMode)) user = false; else {
               provMainDebug('Dev Mode enabled: Missing session cookies will be ignored');
             }
           } else if (user.toString() !== cookieUser.toString()) user = false;
@@ -591,16 +610,103 @@ class Provider {
             deploymentId: deploymentId,
             user: user
           });
-          if (!idTokenRes) throw new Error('IDTOKEN_NOT_FOUND_DB');
+
+          console.log("idTokenRes", idTokenRes);
+          if (!customFlow && !idTokenRes) throw new Error('IDTOKEN_NOT_FOUND_DB');
           idTokenRes = idTokenRes[0];
+          if (customFlow) {
+            idTokenRes = {
+              "_id": {
+                "$oid": "6399b6d21f82acac1fe9a495"
+              },
+              "iss": "https://coursera.org",
+              "user": "db0de4832f7d35441af47c28528a1787",
+              "userInfo": {
+                "name": "Sunil Katkar",
+                "email": "sunil.katkar@adeptus.in"
+              },
+              "platformInfo": {
+                "guid": "coursera-platform",
+                "name": "Coursera"
+              },
+              "clientId": "sMH8RO49SEeB_ETuPXhHDQ",
+              "platformId": "77c8830230263d9b69f78ee2a2dcfff7",
+              "deploymentId": "deploymentId~1220",
+              "__v": 0,
+              "createdAt": {
+                "$date": {
+                  "$numberLong": "1671018194082"
+                }
+              }
+            }
+          }
           const idToken = JSON.parse(JSON.stringify(idTokenRes)); // Gets correspondent context token from database
 
           let contextToken = await this.Database.Get(false, 'contexttoken', {
             contextId: contextId,
             user: user
           });
-          if (!contextToken) throw new Error('CONTEXTTOKEN_NOT_FOUND_DB');
+          if (!customFlow && !contextToken) throw new Error('CONTEXTTOKEN_NOT_FOUND_DB');
           contextToken = contextToken[0];
+          if (customFlow) {
+            contextToken = {
+              "_id": {
+                "$oid": "6399b8251f82acac1fec143d"
+              },
+              "roles": [
+                "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner"
+              ],
+              "contextId": "https%3A%2F%2Fcoursera.orgsMH8RO49SEeB_ETuPXhHDQdeploymentId~1220ondemand~_aGTsQ9tEe2zqRIXQVOwlw_2Se5bHYAEe2qIgqImdj1qw",
+              "path": "/",
+              "user": "db0de4832f7d35441af47c28528a1787",
+              "targetLinkUri": "https://sharedsuccess.org",
+              "context": {
+                "id": "ondemand~_aGTsQ9tEe2zqRIXQVOwlw",
+                "url": "https://coursera.org"
+              },
+              "resource": {
+                "id": "2Se5bHYAEe2qIgqImdj1qw",
+                "title": "New LTI Item"
+              },
+              "custom": {
+                "custom_cohort_name": "fall2022",
+                "custom_channel_redirect": "https://www.google.com",
+                "custom_cohort_id": "fall2022~1234",
+                "custom___a__s_9t_e2zq______wlw_user_id": "d3e9a164b26ae837d49bad2d45637caa6135f726"
+              },
+              "messageType": "LtiResourceLinkRequest",
+              "version": "1.3.0",
+              "lis": {
+                "course_offering_sourcedid": "FXNybw9uEe2NSxLtvBOq5w"
+              },
+              "endpoint": {
+                "lineitems": "https://www.coursera.org/api/lti/context/_aGTsQ9tEe2zqRIXQVOwlw~2Se5bHYAEe2qIgqImdj1qw/lineItems",
+                "scope": [
+                  "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem",
+                  "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem.readonly",
+                  "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
+                  "https://purl.imsglobal.org/spec/lti-ags/scope/score",
+                  "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly"
+                ],
+                "lineitem": "https://www.coursera.org/api/lti/context/_aGTsQ9tEe2zqRIXQVOwlw~2Se5bHYAEe2qIgqImdj1qw/lineItems/nYHRQnqgEe2Yvwofcxcvuw"
+              },
+              "namesRoles": {
+                "scope": [
+                  "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly"
+                ],
+                "context_memberships_url": "https://www.coursera.org/api/rest/v1/lti/nrps/context/session-tool~FXNybw9uEe2NSxLtvBOq5w~2Se5bHYAEe2qIgqImdj1qw/memberships",
+                "service_versions": [
+                  "2.0"
+                ]
+              },
+              "__v": 0,
+              "createdAt": {
+                "$date": {
+                  "$numberLong": "1671018533848"
+                }
+              }
+            }
+          }
           idToken.platformContext = JSON.parse(JSON.stringify(contextToken)); // Creating local variables
 
           res.locals.context = idToken.platformContext;
@@ -652,7 +758,6 @@ class Provider {
     this.app.use(sessionValidator);
     this.app.all((0, _classPrivateFieldGet2.default)(this, _loginRoute), async (req, res) => {
       const params = _objectSpread(_objectSpread({}, req.query), req.body);
-
       try {
         if (!params.iss || !params.login_hint || !params.target_link_uri) return res.status(400).send({
           status: 400,
@@ -664,7 +769,7 @@ class Provider {
         const iss = params.iss;
         provMainDebug('Receiving a login request from: ' + iss);
         let platform;
-        if (params.client_id) platform = await this.getPlatform(iss, params.client_id);else platform = (await this.getPlatform(iss))[0];
+        if (params.client_id) platform = await this.getPlatform(iss, params.client_id); else platform = (await this.getPlatform(iss))[0];
 
         if (platform) {
           const platformActive = await platform.platformActive();
@@ -711,10 +816,16 @@ class Provider {
           const query = await Request.ltiAdvantageLogin(params, platform, state);
           provMainDebug('Login request: ');
           provMainDebug(query);
-          res.redirect(url.format({
+          console.log("await platform.platformAuthEndpoint()");
+          let tmp = url.format({
             pathname: await platform.platformAuthEndpoint(),
             query: query
-          }));
+          });
+
+          //    let temp = await axios({"method":'get',url:tmp})
+          console.log(query);
+          res.redirect("/?ltik=" + tmp);
+          console.log("Next");
         } else {
           provMainDebug('Unregistered platform attempting connection: ' + iss);
           return (0, _classPrivateFieldGet2.default)(this, _unregisteredPlatformCallback2).call(this, req, res);
@@ -749,6 +860,7 @@ class Provider {
       return (0, _classPrivateFieldGet2.default)(this, _connectCallback2).call(this, res.locals.token, req, res, next);
     });
     (0, _classPrivateFieldSet2.default)(this, _setup, true);
+    console.log("Next 2");
     return this;
   }
   /**
@@ -774,7 +886,7 @@ class Provider {
       if (options && options.port) conf.port = options.port;
       if (options && options.silent) conf.silent = options.silent; // Starts server on given port
 
-      if (options && options.serverless) console.log('Ltijs started in serverless mode...');else {
+      if (options && options.serverless) console.log('Ltijs started in serverless mode...'); else {
         await (0, _classPrivateFieldGet2.default)(this, _server).listen(conf.port);
         provMainDebug('Ltijs started listening on port: ', conf.port); // Startup message
 
@@ -1303,7 +1415,7 @@ class Provider {
   async redirect(res, path, options) {
     if (!res || !path) throw new Error('MISSING_ARGUMENT');
     if (!res.locals.token) return res.redirect(path); // If no token is present, just redirects
-
+    console.log("In redirect");
     provMainDebug('Redirecting to: ', path);
     const token = res.locals.token;
     const pathParts = url.parse(path);

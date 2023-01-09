@@ -2,7 +2,7 @@ const router = require('express').Router()
 const path = require('path')
 
 // Requiring Ltijs
-const lti = require('ltijs').Provider
+const lti = require('./ltijs').Provider
 
 // Grading route
 router.post('/grade', async (req, res) => {
@@ -112,10 +112,19 @@ router.get('/info', async (req, res) => {
   }
 
   if (context.roles) info.roles = context.roles
-  if (context.context) info.context = context.context
+  if (context.context) info.context = context
 
   return res.send(info)
 })
+
+
+// Get user and context information
+router.get('/test', async (req, res) => {
+  
+console.log(req);
+  return res.send(req.body);
+})
+
 
 // Wildcard route to deal with redirecting to React routes
 router.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')))

@@ -132,6 +132,7 @@ class Auth {
             jwk: jwk
           });
           const verified = await this.verifyToken(token, key, validationParameters, platform, Database);
+          console.log("verified",verified);
           return verified;
         }
 
